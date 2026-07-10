@@ -15,7 +15,7 @@ kurto g pods
 ## Install
 
 ```shell
-go install github.com/USER/kurto@latest
+go install github.com/SomeoneUnlicensed/kurto@latest
 ```
 
 Or download a binary from Releases.
@@ -119,7 +119,7 @@ All platforms share the same CLI, state format, image pulling, and YAML resource
 ## Build from source
 
 ```shell
-git clone https://github.com/USER/kurto
+git clone https://github.com/SomeoneUnlicensed/kurto
 cd kurto
 go build -o kurto .
 ```
