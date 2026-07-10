@@ -183,6 +183,62 @@ spec:
 
 All platforms share the same CLI, state format, image pulling, and YAML resource model.
 
+### Shell (WSL-like)
+
+```shell
+kurto shell        # Open interactive Alpine shell
+kurto s            # Same, short alias
+kurto s ubuntu     # Shell into Ubuntu container
+kurto wsl          # WSL-compatible alias
+```
+
+On Windows, `kurto shell` detects Windows Terminal and opens a new tab running the container. Falls back to a new cmd.exe window if Windows Terminal is not available.
+
+### What does `kurto r alpine .` do?
+
+It runs image `alpine` with command `.` (dot). In Linux, `.` is a shell builtin that sources a file. Since kurto's default shell is `/bin/sh`, passing `.` as a command will fail with `exec: ".": executable file not found`. Use explicit shell:
+
+```shell
+kurto r alpine -- /bin/sh -c '. /etc/os-release && echo $NAME'
+```
+
+Without `--`, the first argument after the image name is treated as the command.
+
+## How it works on Windows
+
+### Job Objects
+
+Each kurto container on Windows is a Windows Job Object. The process is created inside the job, which provides:
+
+- **Process isolation** — the job is configured with `KILL_ON_JOB_CLOSE`: when the parent kurto process exits, all container processes are terminated automatically.
+- **Active process limit** — limited to 1 process by default (the main command).
+- **Memory limit** — if `--memory` is specified, `JOBOBJECT_LIMIT_JOB_MEMORY` and `JOBOBJECT_LIMIT_PROCESS_MEMORY` are set on the job.
+
+The job handle is persisted to `containers/<id>/job` and cleaned up when the container exits.
+
+### Process creation
+
+The container command is started via `os/exec` with `CREATE_NEW_PROCESS_GROUP`, then assigned to the job object via `AssignProcessToJobObject`. The PID is saved to `containers/<id>/pid`.
+
+### Filesystem isolation
+
+Each container gets its own rootfs at `containers/<id>/rootfs/`. The image is extracted via tar.gz. The process uses this as its working directory.
+
+### Environment isolation
+
+Container-specific environment variables (`KURTO_CONTAINER`, `KURTO_ROOTFS`, user `--env` vars) are injected. The process does not inherit the full parent environment.
+
+### Log capture
+
+stdout and stderr are captured via `io.MultiWriter`: output goes to the terminal and to `containers/<id>/logs`. Enables `kurto logs <container>`.
+
+### Limitations on Windows
+
+- No network namespace isolation (containers share host networking)
+- No filesystem namespace isolation (chroot is Linux-only; uses working directory isolation)
+- Image format is a single tar.gz (no OCI layer merging)
+- `whoami` and some system commands may fail due to the job object environment
+
 ## Build from source
 
 ```shell

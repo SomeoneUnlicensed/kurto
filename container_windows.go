@@ -251,6 +251,32 @@ func handleNsenter() {
 	os.Exit(0) // __nsenter__ is Linux-only
 }
 
+func platformShell(image string) {
+	shellCmd := "cmd.exe"
+	termApp := ""
+
+	// Detect Windows Terminal
+	wtPath := filepath.Join(os.Getenv("LOCALAPPDATA"), "Microsoft", "WindowsApps", "wt.exe")
+	if _, err := os.Stat(wtPath); err == nil {
+		termApp = wtPath
+	}
+
+	kurtoExe, _ := os.Executable()
+	containerCmd := fmt.Sprintf("%s run --rm %s %s", kurtoExe, image, shellCmd)
+
+	if termApp != "" {
+		cmd := exec.Command(termApp, "-w", "0", "nt", "-d", ".", "cmd", "/c", containerCmd)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+	} else {
+		// Fallback: start new cmd window
+		cmd := exec.Command("cmd", "/c", "start", "Kurto Shell", "cmd", "/k", containerCmd)
+		cmd.Run()
+	}
+}
+
 func parseMemoryBytesWin(s string) uint64 {
 	s = strings.ToLower(strings.TrimSpace(s))
 	var mult uint64 = 1

@@ -129,3 +129,11 @@ func platformCleanup(c *Container) error {
 func handleNsenter() {
 	os.Exit(0)
 }
+
+func platformShell(image string) {
+	cmd := exec.Command("kurto", "run", "--rm", image, "/bin/sh")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+}

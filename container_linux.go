@@ -152,6 +152,14 @@ func ensureDirs(root string, dirs ...string) {
 
 func handleNsenter() { nsenterChild() }
 
+func platformShell(image string) {
+	cmd := exec.Command("kurto", "run", "--rm", image, "/bin/sh")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+}
+
 func nsenterChild() {
 	if len(os.Args) < 5 {
 		os.Exit(1)

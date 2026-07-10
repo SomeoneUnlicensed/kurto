@@ -22,6 +22,7 @@ var cmds = map[string]string{
 	"a":    "apply", "apply": "apply",
 	"g":    "get", "get":     "get", "describe": "get",
 	"d":    "delete", "delete": "delete", "del": "delete",
+	"s":    "shell", "shell": "shell", "wsl": "shell", "term": "shell",
 }
 
 var helpText = `KURTO — Unikorn Container Runtime
@@ -38,6 +39,8 @@ COMMANDS:
     rm          <container>...
     e,   exec   <container> <cmd...>
     l,   logs   <container>
+    s,   shell  [image]     Open interactive terminal (WSL-like)
+    wsl         [image]     Alias for shell
 
   Images:
     im,  images
@@ -64,6 +67,8 @@ EXAMPLES:
   kurto e myapp sh
   kurto g pods
   kurto a -f pod.yaml
+  kurto shell            Open interactive terminal (WSL-like)
+  kurto s ubuntu         Shell into ubuntu container
 `
 
 func main() {
@@ -125,6 +130,8 @@ func main() {
 		cmdGet(args)
 	case "delete":
 		cmdDelete(args)
+	case "shell":
+		cmdShell(args)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", cmd)
 		os.Exit(1)
@@ -420,6 +427,16 @@ func cmdGet(args []string) {
 	} else {
 		GetResources(kind, ns, sel)
 	}
+}
+
+// ─── shell ────────────────────────────────────────────────
+
+func cmdShell(args []string) {
+	image := "alpine"
+	if len(args) > 0 && args[0][0] != '-' {
+		image = args[0]
+	}
+	platformShell(image)
 }
 
 // ─── delete ───────────────────────────────────────────────
