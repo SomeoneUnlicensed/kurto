@@ -7,9 +7,10 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
-  goreleaser:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,13 +27,13 @@ jobs:
             for goarch in amd64 arm64; do
               ext=""
               if [ "$goos" = "windows" ]; then ext=".exe"; fi
-              GOOS=$goos GOARCH=$goarch go build -o "dist/kurto-${goos}-${goarch}${ext}" .
+              GOOS=$goos GOARCH=$goarch go build -ldflags="-X main.version=${GITHUB_REF_NAME}" -o "dist/kurto-${goos}-${goarch}${ext}" .
             done
           done
-          GOOS=linux GOARCH=arm go build -o dist/kurto-linux-arm .
-          GOOS=linux GOARCH=386 go build -o dist/kurto-linux-386 .
-          GOOS=windows GOARCH=386 go build -o dist/kurto-windows-386.exe .
-      - name: Create release archive
+          GOOS=linux GOARCH=arm go build -ldflags="-X main.version=${GITHUB_REF_NAME}" -o dist/kurto-linux-arm .
+          GOOS=linux GOARCH=386 go build -ldflags="-X main.version=${GITHUB_REF_NAME}" -o dist/kurto-linux-386 .
+          GOOS=windows GOARCH=386 go build -ldflags="-X main.version=${GITHUB_REF_NAME}" -o dist/kurto-windows-386.exe .
+      - name: Create archives
         run: |
           cd dist
           for f in kurto-*; do
@@ -42,9 +43,46 @@ jobs:
               gzip -c "$f" > "${f}.gz"
             fi
           done
-          ls -la
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: dist/
+
+  windows-installer:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: dist
+      - name: Install NSIS
+        run: choco install nsis -y
+      - name: Build NSIS installer
+        run: |
+          copy dist\kurto-windows-amd64.exe install\
+          & "C:\Program Files (x86)\NSIS\makensis.exe" install\kurto.nsi
+        shell: powershell
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: install\kurto-setup-*.exe
+
+  release:
+    needs: [build, windows-installer]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect artifacts
+        run: |
+          mkdir -p release-assets
+          cp -r artifacts/binaries/* release-assets/
+          cp -r artifacts/installer/* release-assets/ 2>/dev/null || true
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: release-assets/*
           generate_release_notes: true

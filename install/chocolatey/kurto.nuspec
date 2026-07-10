@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>kurto</id>
+    <version>0.1.0</version>
+    <title>Kurto</title>
+    <authors>Vladimir Letunovskiy</authors>
+    <projectUrl>https://github.com/SomeoneUnlicensed/kurto</projectUrl>
+    <licenseUrl>https://github.com/SomeoneUnlicensed/kurto/blob/main/LICENSE</licenseUrl>
+    <projectSourceUrl>https://github.com/SomeoneUnlicensed/kurto</projectSourceUrl>
+    <tags>container runtime docker kubernetes admin</tags>
+    <summary>Minimal cross-platform container runtime</summary>
+    <description>Kurto runs isolated processes on Windows (Job Objects), Linux (namespaces + cgroups), and macOS. No daemon. No dependencies.</description>
+    <releaseNotes>https://github.com/SomeoneUnlicensed/kurto/releases/tag/v0.1.0</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

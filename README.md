@@ -23,9 +23,45 @@ kurto g pods
 go install github.com/SomeoneUnlicensed/kurto@latest
 ```
 
-### Binary release
+### Windows
 
-Download the latest release for your platform from the [Releases page](https://github.com/SomeoneUnlicensed/kurto/releases).
+#### PowerShell one-liner
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/SomeoneUnlicensed/kurto/main/install/install.ps1 | iex
+```
+
+#### Windows installer (NSIS)
+
+Download `kurto-setup-*.exe` from the [Releases page](https://github.com/SomeoneUnlicensed/kurto/releases) and run it.
+
+#### Chocolatey
+
+```shell
+choco install kurto
+```
+
+#### Manual
+
+```powershell
+# Download
+Invoke-WebRequest -Uri "https://github.com/SomeoneUnlicensed/kurto/releases/latest/download/kurto-windows-amd64.zip" -OutFile kurto.zip
+Expand-Archive kurto.zip -DestinationPath .
+mv kurto-windows-amd64.exe kurto.exe
+
+# Add to PATH (Admin)
+move kurto.exe C:\Windows\System32\kurto.exe
+```
+
+### Linux / macOS
+
+#### Homebrew (macOS / Linux)
+
+```shell
+brew install kurto
+```
+
+#### Binary download
 
 | Platform | Download |
 |---|---|
@@ -43,10 +79,12 @@ Download the latest release for your platform from the [Releases page](https://g
 gunzip kurto-linux-amd64.gz
 chmod +x kurto-linux-amd64
 sudo mv kurto-linux-amd64 /usr/local/bin/kurto
+```
 
-# Windows (PowerShell)
-Expand-Archive kurto-windows-amd64.zip -DestinationPath .
-mv kurto-windows-amd64.exe kurto.exe
+#### From source
+
+```shell
+go install github.com/SomeoneUnlicensed/kurto@latest
 ```
 
 ## Quickstart
