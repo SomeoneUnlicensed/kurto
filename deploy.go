@@ -28,12 +28,13 @@ type GitHubRelease struct {
 
 func cmdDeploy(args []string) {
 	if len(args) < 1 {
-		fatal("usage: kurto deploy [--user root] [--port 22] [--key path] [--manifest dir] <host>")
+		fatal("usage: kurto deploy [--user root] [--port 22] [--key path] [--target-os windows] [--manifest dir] <host>")
 	}
 
 	user := "root"
 	port := "22"
 	key := ""
+	targetOS := ""
 	manifestDir := "."
 	host := ""
 
@@ -48,6 +49,9 @@ func cmdDeploy(args []string) {
 		case args[i] == "--key" && i+1 < len(args):
 			key = args[i+1]
 			i++
+		case args[i] == "--target-os" && i+1 < len(args):
+			targetOS = args[i+1]
+			i++
 		case args[i] == "--manifest" && i+1 < len(args):
 			manifestDir = args[i+1]
 			i++
@@ -61,76 +65,132 @@ func cmdDeploy(args []string) {
 	}
 
 	sshTarget := fmt.Sprintf("%s@%s", user, host)
-	sshArgs := []string{"-p", port, "-o", "StrictHostKeyChecking=no"}
-	if key != "" {
-		sshArgs = append(sshArgs, "-i", key)
-	}
 
 	fmt.Printf("Deploying to %s...\n", sshTarget)
 
-	// Step 1: build binary for target (linux/amd64)
+	// Auto-detect target OS if not specified
+	if targetOS == "" {
+		out, _ := sshOutput(sshTarget, port, key, "uname -s 2>/dev/null || echo Windows")
+		out = strings.TrimSpace(out)
+		switch {
+		case strings.Contains(out, "Linux"):
+			targetOS = "linux"
+		case strings.Contains(out, "Darwin"):
+			targetOS = "darwin"
+		default:
+			targetOS = "windows"
+		}
+		fmt.Printf("Detected target OS: %s\n", targetOS)
+	}
+
+	targetArch := "amd64"
+	out, _ := sshOutput(sshTarget, port, key, "uname -m 2>/dev/null || echo AMD64")
+	out = strings.TrimSpace(out)
+	switch {
+	case strings.Contains(out, "aarch64"), strings.Contains(out, "arm64"):
+		targetArch = "arm64"
+	case strings.Contains(out, "arm"):
+		targetArch = "arm"
+	case strings.Contains(out, "386"), strings.Contains(out, "i386"):
+		targetArch = "386"
+	}
+
 	tmpDir, _ := os.MkdirTemp("", "kurto-deploy")
 	defer os.RemoveAll(tmpDir)
 
-	targetBinary := filepath.Join(tmpDir, "kurto")
-	if runtime.GOOS == "windows" {
-		targetBinary += ".exe"
+	ext := ""
+	if targetOS == "windows" {
+		ext = ".exe"
 	}
+	targetBinary := filepath.Join(tmpDir, "kurto"+ext)
 
-	fmt.Print("Building kurto for linux/amd64...")
+	fmt.Printf("Building kurto for %s/%s...", targetOS, targetArch)
 	build := exec.Command("go", "build", "-ldflags=-X main.version="+version, "-o", targetBinary, ".")
-	build.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64")
+	build.Env = append(os.Environ(), "GOOS="+targetOS, "GOARCH="+targetArch)
 	if out, err := build.CombinedOutput(); err != nil {
 		fatalf("build: %v\n%s", err, out)
 	}
 	fmt.Println(" done")
 
-	// Step 2: copy binary to server
-	fmt.Print("Copying kurto to server...")
-	scpArgs := append([]string{"-P", port, "-o", "StrictHostKeyChecking=no"}, targetBinary, sshTarget+":/tmp/kurto")
-	if key != "" {
-		scpArgs = append([]string{"-i", key}, scpArgs...)
-	}
-	scp := exec.Command("scp", scpArgs...)
-	if out, err := scp.CombinedOutput(); err != nil {
-		fatalf("scp: %v\n%s", err, out)
-	}
-	fmt.Println(" done")
-
-	// Step 3: install on server
-	fmt.Print("Installing on server...")
-	installCmd := "sudo mv /tmp/kurto /usr/local/bin/kurto && sudo chmod +x /usr/local/bin/kurto"
-	sshRun(sshTarget, port, key, installCmd)
-	fmt.Println(" done")
-
-	// Step 4: copy manifest files
-	manifestFiles := findManifests(manifestDir)
-	if len(manifestFiles) > 0 {
-		fmt.Print("Copying manifests...")
-		remoteDir := "/etc/kurto/manifests"
-		sshRun(sshTarget, port, key, "sudo mkdir -p "+remoteDir+" && sudo chown "+user+" "+remoteDir)
-		for _, f := range manifestFiles {
-			remotePath := remoteDir + "/" + filepath.Base(f)
-			scpArgs := append([]string{"-P", port, "-o", "StrictHostKeyChecking=no"}, f, sshTarget+":"+remotePath)
-			if key != "" {
-				scpArgs = append([]string{"-i", key}, scpArgs...)
-			}
-			exec.Command("scp", scpArgs...).Run()
-		}
-		fmt.Println(" done")
-
-		// Step 5: apply manifests
-		fmt.Print("Applying manifests...")
-		applyCmd := "kurto apply -f /etc/kurto/manifests/*.yaml"
-		sshRun(sshTarget, port, key, applyCmd)
-		fmt.Println(" done")
+	if targetOS == "windows" {
+		deployWindows(sshTarget, port, key, targetBinary, manifestDir)
+	} else {
+		deployUnix(sshTarget, port, key, targetBinary, manifestDir)
 	}
 
-	// Step 6: status
+	// Status
 	fmt.Print("Checking status...")
-	statusCmd := "kurto ps -a"
-	out, _ := sshOutput(sshTarget, port, key, statusCmd)
-	fmt.Println("\n" + out)
+	statusCmd := "kurto ps -a 2>/dev/null || kurto.exe ps -a"
+	out2, _ := sshOutput(sshTarget, port, key, statusCmd)
+	fmt.Println("\n" + strings.TrimSpace(out2))
+}
+
+func deployUnix(target, port, key, binary, manifestDir string) {
+	fmt.Print("Copying kurto to server...")
+	scpRun(target, port, key, binary, "/tmp/kurto")
+	fmt.Println(" done")
+
+	fmt.Print("Installing on server...")
+	sshRun(target, port, key, "sudo mv /tmp/kurto /usr/local/bin/kurto && sudo chmod +x /usr/local/bin/kurto")
+	fmt.Println(" done")
+
+	deployManifests(target, port, key, manifestDir, "/etc/kurto/manifests", "", "")
+}
+
+func deployWindows(target, port, key, binary, manifestDir string) {
+	remoteDir := "C:\\ProgramData\\Kurto"
+
+	fmt.Print("Creating remote directory...")
+	sshRun(target, port, key, "mkdir "+remoteDir+" 2>nul")
+	fmt.Println(" done")
+
+	fmt.Print("Copying kurto to server...")
+	scpRun(target, port, key, binary, remoteDir+"\\kurto.exe")
+	fmt.Println(" done")
+
+	fmt.Print("Adding to PATH...")
+	sshRun(target, port, key,
+		`setx /M PATH "%PATH%;`+remoteDir+`" 2>nul || echo already in PATH`)
+	fmt.Println(" done")
+
+	deployManifests(target, port, key, manifestDir, remoteDir+"\\manifests", ".yaml", remoteDir+"\\")
+}
+
+func deployManifests(target, port, key, localDir, remoteDir, extFilter, prefix string) {
+	files := findManifests(localDir)
+	if len(files) == 0 {
+		return
+	}
+
+	fmt.Print("Copying manifests...")
+	sshRun(target, port, key, "mkdir "+remoteDir+" 2>nul")
+	for _, f := range files {
+		rem := remoteDir + "/" + filepath.Base(f)
+		scpRun(target, port, key, f, rem)
+	}
+	fmt.Println(" done")
+
+	fmt.Print("Applying manifests...")
+	applyCmd := prefix + "kurto apply -f " + remoteDir + "/*" + extFilter
+	sshRun(target, port, key, applyCmd)
+	fmt.Println(" done")
+}
+
+func buildSSHArgs(port, key string) []string {
+	args := []string{"-p", port, "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=10"}
+	if key != "" {
+		args = append(args, "-i", key)
+	}
+	return args
+}
+
+func scpRun(target, port, key, src, dst string) {
+	args := buildSSHArgs(port, key)
+	args = append([]string{"-P", port, "-o", "StrictHostKeyChecking=no"}, src, target+":"+dst)
+	if key != "" {
+		args = append([]string{"-i", key}, args...)
+	}
+	exec.Command("scp", args...).Run()
 }
 
 func findManifests(dir string) []string {
@@ -145,18 +205,14 @@ func findManifests(dir string) []string {
 }
 
 func sshRun(target, port, key, cmd string) {
-	args := []string{"-p", port, "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=10", target, cmd}
-	if key != "" {
-		args = append([]string{"-i", key}, args...)
-	}
+	args := buildSSHArgs(port, key)
+	args = append(args, target, cmd)
 	exec.Command("ssh", args...).Run()
 }
 
 func sshOutput(target, port, key, cmd string) (string, error) {
-	args := []string{"-p", port, "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=10", target, cmd}
-	if key != "" {
-		args = append([]string{"-i", key}, args...)
-	}
+	args := buildSSHArgs(port, key)
+	args = append(args, target, cmd)
 	out, err := exec.Command("ssh", args...).Output()
 	return string(out), err
 }
