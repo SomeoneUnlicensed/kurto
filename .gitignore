@@ -1,0 +1,7 @@
+kurto
+kurto.exe
+*.exe
+*.test
+*.out
+vendor/
+/var/lib/kurto/
