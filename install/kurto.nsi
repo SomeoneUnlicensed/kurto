@@ -1,6 +1,7 @@
 !define PRODUCT_NAME "Kurto"
 !define PRODUCT_VERSION "0.1.0"
 !define PRODUCT_PUBLISHER "Vladimir Letunovskiy"
+!define PRODUCT_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Kurto"
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 OutFile "kurto-setup-${PRODUCT_VERSION}.exe"
@@ -18,10 +19,11 @@ Section "Install"
   CreateShortCut "$SMPROGRAMS\Kurto\Kurto Shell.lnk" "$INSTDIR\kurto.exe" ""
   CreateShortCut "$SMPROGRAMS\Kurto\Uninstall.lnk" "$INSTDIR\uninstall.exe"
 
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Kurto" "DisplayName" "Kurto ${PRODUCT_VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Kurto" "UninstallString" "$INSTDIR\uninstall.exe"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Kurto" "DisplayVersion" "${PRODUCT_VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Kurto" "Publisher" "${PRODUCT_PUBLISHER}"
+  WriteRegStr HKLM "${PRODUCT_UNINSTALL_KEY}" "DisplayName" "Kurto ${PRODUCT_VERSION}"
+  WriteRegStr HKLM "${PRODUCT_UNINSTALL_KEY}" "UninstallString" "$INSTDIR\uninstall.exe"
+  WriteRegStr HKLM "${PRODUCT_UNINSTALL_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
+  WriteRegStr HKLM "${PRODUCT_UNINSTALL_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
+  WriteRegStr HKLM "${PRODUCT_UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\kurto.exe"
 
   ExecWait 'setx PATH "$INSTDIR;%PATH%" /M'
 SectionEnd
@@ -35,5 +37,5 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\Kurto\Uninstall.lnk"
   RMDir "$SMPROGRAMS\Kurto"
 
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Kurto"
+  DeleteRegKey HKLM "${PRODUCT_UNINSTALL_KEY}"
 SectionEnd

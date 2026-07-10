@@ -23,6 +23,8 @@ var cmds = map[string]string{
 	"g":    "get", "get":     "get", "describe": "get",
 	"d":    "delete", "delete": "delete", "del": "delete",
 	"s":    "shell", "shell": "shell", "wsl": "shell", "term": "shell",
+	"deploy": "deploy",
+	"update": "self-update", "self-update": "self-update", "upgrade": "self-update",
 }
 
 var helpText = `KURTO — Unikorn Container Runtime
@@ -58,6 +60,11 @@ COMMANDS:
     g,   get    pod|container <name>   (describe)
     d,   delete pod|container|image <name>
 
+  Deploy:
+    deploy      [--user root] [--port 22] [--key id_rsa] <host>
+    self-update               Update kurto to latest version
+    version --check           Check for newer version
+
 EXAMPLES:
   kurto r alpine
   kurto r --rm --name myapp alpine echo hello
@@ -69,9 +76,14 @@ EXAMPLES:
   kurto a -f pod.yaml
   kurto shell            Open interactive terminal (WSL-like)
   kurto s ubuntu         Shell into ubuntu container
+  kurto deploy root@myserver
+  kurto self-update
+  kurto version --check
 `
 
 func main() {
+	checkVersionAsync()
+
 	if len(os.Args) < 2 {
 		fmt.Print(helpText)
 		return
@@ -85,7 +97,11 @@ func main() {
 	}
 
 	if cmd == "--version" || cmd == "-v" || cmd == "version" {
-		fmt.Println("kurto version", version)
+		if len(os.Args) > 2 && os.Args[2] == "--check" {
+			cmdVersionCheck()
+		} else {
+			fmt.Println("kurto version", version)
+		}
 		return
 	}
 
@@ -132,6 +148,10 @@ func main() {
 		cmdDelete(args)
 	case "shell":
 		cmdShell(args)
+	case "deploy":
+		cmdDeploy(args)
+	case "self-update":
+		cmdSelfUpdate()
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", cmd)
 		os.Exit(1)
