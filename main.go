@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var version = "dev"
+
 var cmds = map[string]string{
 	"r": "run", "run":     "run",
 	"ps":    "ps",
@@ -74,6 +76,11 @@ func main() {
 
 	if cmd == "--help" || cmd == "-h" || cmd == "help" {
 		fmt.Print(helpText)
+		return
+	}
+
+	if cmd == "--version" || cmd == "-v" || cmd == "version" {
+		fmt.Println("kurto version", version)
 		return
 	}
 

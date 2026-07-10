@@ -1,5 +1,8 @@
 # kurto
 
+[![CI](https://github.com/SomeoneUnlicensed/kurto/actions/workflows/ci.yml/badge.svg)](https://github.com/SomeoneUnlicensed/kurto/actions/workflows/ci.yml)
+[![Release](https://github.com/SomeoneUnlicensed/kurto/actions/workflows/release.yml/badge.svg)](https://github.com/SomeoneUnlicensed/kurto/actions/workflows/release.yml)
+
 Minimal container runtime. Cross-platform. No daemon. No dependencies.
 
 Run isolated processes on Linux (namespaces + cgroups v2), Windows (Job Objects), and macOS.
@@ -14,11 +17,37 @@ kurto g pods
 
 ## Install
 
+### From source
+
 ```shell
 go install github.com/SomeoneUnlicensed/kurto@latest
 ```
 
-Or download a binary from Releases.
+### Binary release
+
+Download the latest release for your platform from the [Releases page](https://github.com/SomeoneUnlicensed/kurto/releases).
+
+| Platform | Download |
+|---|---|
+| Linux amd64 | `kurto-linux-amd64.gz` |
+| Linux arm64 | `kurto-linux-arm64.gz` |
+| Linux arm | `kurto-linux-arm.gz` |
+| Linux 386 | `kurto-linux-386.gz` |
+| Windows amd64 | `kurto-windows-amd64.zip` |
+| Windows 386 | `kurto-windows-386.zip` |
+| macOS amd64 | `kurto-darwin-amd64.gz` |
+| macOS arm64 | `kurto-darwin-arm64.gz` |
+
+```shell
+# Linux / macOS
+gunzip kurto-linux-amd64.gz
+chmod +x kurto-linux-amd64
+sudo mv kurto-linux-amd64 /usr/local/bin/kurto
+
+# Windows (PowerShell)
+Expand-Archive kurto-windows-amd64.zip -DestinationPath .
+mv kurto-windows-amd64.exe kurto.exe
+```
 
 ## Quickstart
 

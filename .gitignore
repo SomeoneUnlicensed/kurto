@@ -4,4 +4,5 @@ kurto.exe
 *.test
 *.out
 vendor/
+dist/
 /var/lib/kurto/

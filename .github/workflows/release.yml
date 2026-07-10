@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+      - name: Build all platforms
+        run: |
+          mkdir -p dist
+          for goos in linux windows darwin; do
+            for goarch in amd64 arm64; do
+              ext=""
+              if [ "$goos" = "windows" ]; then ext=".exe"; fi
+              GOOS=$goos GOARCH=$goarch go build -o "dist/kurto-${goos}-${goarch}${ext}" .
+            done
+          done
+          GOOS=linux GOARCH=arm go build -o dist/kurto-linux-arm .
+          GOOS=linux GOARCH=386 go build -o dist/kurto-linux-386 .
+          GOOS=windows GOARCH=386 go build -o dist/kurto-windows-386.exe .
+      - name: Create release archive
+        run: |
+          cd dist
+          for f in kurto-*; do
+            if [[ $f == *.exe ]]; then
+              zip "${f%.exe}.zip" "$f"
+            else
+              gzip -c "$f" > "${f}.gz"
+            fi
+          done
+          ls -la
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
