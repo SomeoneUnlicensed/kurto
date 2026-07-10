@@ -135,6 +135,14 @@ kurto run --name myapp alpine sh
 | `kurto pod stop` | Stop a pod |
 | `kurto pod rm` | Remove a pod |
 
+### Deploy & Update
+
+| Command | Description |
+|---|---|
+| `kurto deploy <host>` | Deploy kurto stack to a remote server via SSH |
+| `kurto self-update` | Update kurto to the latest release |
+| `kurto version --check` | Check for newer version |
+
 ### Kubernetes-style
 
 | Command | Shorthand | Description |
@@ -183,7 +191,37 @@ spec:
 
 All platforms share the same CLI, state format, image pulling, and YAML resource model.
 
-### Shell (WSL-like)
+### Deploy to a server
+
+```shell
+# Deploy kurto and all manifests to a remote server
+kurto deploy root@myserver
+
+# Custom port and key
+kurto deploy --port 2222 --key ~/.ssh/prod_key root@myserver
+
+# Deploy specific manifests
+kurto deploy --manifest ./deploy root@192.168.1.100
+```
+
+What `deploy` does:
+1. Builds `kurto` binary for `linux/amd64`
+2. Copies it to the server via SCP
+3. Installs to `/usr/local/bin/kurto`
+4. Copies all `*.yaml` manifests from the manifest directory
+5. Runs `kurto apply` on the server
+6. Shows container status
+
+## Self-update
+
+```shell
+kurto self-update        # Download and apply latest release
+kurto version --check    # Check for updates without installing
+```
+
+`kurto` also checks for new versions automatically once per day and shows a hint when a newer release is available.
+
+## Shell (WSL-like)
 
 ```shell
 kurto shell        # Open interactive Alpine shell
