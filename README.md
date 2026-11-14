@@ -3,7 +3,7 @@
 [![CI](https://github.com/SomeoneUnlicensed/kurto/actions/workflows/ci.yml/badge.svg)](https://github.com/SomeoneUnlicensed/kurto/actions/workflows/ci.yml)
 [![Release](https://github.com/SomeoneUnlicensed/kurto/actions/workflows/release.yml/badge.svg)](https://github.com/SomeoneUnlicensed/kurto/actions/workflows/release.yml)
 
-Minimal container runtime. Cross-platform. No daemon. No dependencies.
+Minimal container runtime. 
 
 Run isolated processes on Linux (namespaces + cgroups v2), Windows (Job Objects), and macOS.
 
